@@ -1,277 +1,297 @@
-# JAM DUNA Releases
+# JAM DUNA Nomad Deployment
 
-[JAM](https://jam.web3.foundation/) is the anticipated future protocol for Polkadot, being implemented by multiple teams across different programming languages. The [JAM Gray Paper](https://graypaper.com/) outlines the protocol, and the Web3 Foundation has many 20+ teams undergoing [jam-conformance](https://github.com/w3f/jam-conformance) fuzzing processes.    
+This document explains the `jamduna` Nomad job configuration used to deploy and bootstrap a JAM validator cluster in duna.hcl
 
-This repo contains the latest `duna_target` in support of [JAM DUNA M1 milestone delivery](https://github.com/w3f/jam-milestone-delivery/pull/22) and a [JAM DUNA PoC JAM Toaster release](https://github.com/jam-duna/jamtestnet/releases/tag/v0.7.2.13-toaster) (Linux AMD64) suitable for PoC JAM Toaster testing.
 
-# JAM DUNA PoC JAM Toaster Release 
+## Overview
 
-This repo contains JAM DUNA binary releases suitable to start testing in the JAM Toaster: (GP 0.7.2 Linux)
-- bring up a reproducible tiny JAM testnet (6 validators) either in a single-machine local testnet (same as corevm/doom) or multi-machine deployment (a few nodes in a JAM Toaster)
-- run FIB flow (`fib-stream-runner`) after validators are healthy (optional)
+This Nomad job deploys multiple JAM validator nodes across a cluster in a deterministic, disk-aware way.
 
-It is expected this can support further testing with real services (smart contract/privacy services) in larger testnets in a multi-client settingg.
+The job:
 
-## Choose Your Path First
+* Schedules **6 JAM validator processes**
+* Ensures each runs on a separate physical host
+* Auto-downloads binaries and chain specifications
+* Binds node identity to host IP and disk
+* Deterministically assigns validator keys
 
-Use this bundle in one of these modes:
-
-1. Single-machine local testnet (recommended)
-- Use the included `Makefile` directly.
-- This is the default and documented path.
-
-2. Multi-machine deployment (JAM Toaster)
-- Use your own deployment/orchestration system (nomad)
-- See **Multi-machine flow** at the end.
-
-If you are not sure, use **single-machine**.
-
-## Download the latest release
-
-Download  the latest release of [jamduna-release-linux-amd64.zip](https://github.com/jam-duna/jamtestnet/releases/tag/v0.7.2.13-toaster) to a folder of your choice and unzip the file
-
-## What Is Included
-
-- `jamduna`
-- `fib-stream-runner`
-- bundled FIB deps:
-  - `runner/fib-builder`
-  - `runner/fib-feeder`
-- minimal genesis bundle for `gen-spec`:
-  - `release_genesis_services/auth_copy.pvm`
-  - `release_genesis_services/fib.jam`
-  - `release_genesis_services/null_authorizer.pvm`
-- `chainspecs/local-dev-config.json`
-- `chainspecs/jamduna-spec.json`
-- `Makefile`
-
-## Prerequisites
-
-- Linux AMD64
-- `bash`, `make`
-- Free local ports:
-  - P2P: `40000..40005`
-  - JSON-RPC: `19800..19805`
-  - FIB RPC (optional): `8601`
-
-## Single-Machine Quick Start (Recommended)
-
-Run from this release directory (the folder containing this README and Makefile).
-
-### 0) Always reset local state first
-
-If this folder was reused or unpacked from someone else, reset first:
-
-```bash
-make clean-state
+```
+Nomad
+  ↓
+Deterministic Validator Scheduler
+  ↓
+IP → Identity Mapping
+  ↓
+Auto Key Distribution
+  ↓
+JAM Network Bootstrap
 ```
 
-### 1) See available targets
+Nomad acts as the chain bootstrap and validator orchestrator.
 
-```bash
-make help
-```
+Features:
 
-### 2) Generate keys
+* Stateless deployment
+* Host anti-affinity
+* Binary auto-upgrade
+* Zero-touch chain bring-up
 
-```bash
-make gen-keys
-```
+## Job Definition
 
-This creates `seed_0..seed_6` under `state/keys/`.
-
-Important:
-- validators are `0..5`
-- `seed_6` is reserved for optional builder role (FIB), not a validator process
-
-### 3) Generate chainspec
-
-```bash
-make gen-spec
-```
-
-### 4) Start validators
-
-```bash
-make run-validators
-```
-
-### 5) Check process and activity health
-
-```bash
-make status
-make health
-```
-
-`make health` checks:
-- validator logs for `Imported Block`
-- optional FIB logs for submission activity patterns
-
-## Optional FIB Flow (After Validators Are Healthy)
-
-You have two ways to run FIB:
-
-1. Foreground mode:
-```bash
-make run-fib-stream
-```
-- blocks current shell
-- stop with `Ctrl+C`
-
-2. Background mode:
-```bash
-make run-fib-stream-bg
-```
-- daemon-like behavior for ops workflows
-- stop with:
-```bash
-make stop-fib
-```
-
-## Operational Checks (Concrete)
-
-Validator block production (example for validator 0):
-
-```bash
-grep -n "Imported Block" logs/jamduna-v0.log | tail
-```
-
-FIB work-package submissions (if FIB is running):
-
-```bash
-grep -n "Work package SUBMITTED\|SubmitBundleToCore CE146 SUCCESS" logs/fib-builder-stream-runner.log | tail
-```
-
-Feeder submission activity:
-
-```bash
-grep -n "submitted call=" logs/fib-feeder-stream-runner.log | tail
-```
-
-## Cleanup
-
-Stop validators and background FIB runner:
-
-```bash
-make stop
-```
-
-Reset state:
-
-```bash
-make clean-state
-```
-
-## Using `jamduna` Binary Directly
-
-If your deployment system manages startup itself, you can bypass the release Makefile.
-
-1. Generate keys:
-
-```bash
-./jamduna gen-keys --data-path /var/lib/jamduna
-```
-
-2. Generate chainspec:
-
-```bash
-./jamduna gen-spec /etc/jam/chain-config.json /etc/jam/jamduna-spec.json
-```
-
-3. Start validator node (example index 0):
-
-```bash
-./jamduna run \
-  --data-path /var/lib/jamduna \
-  --chain /etc/jam/jamduna-spec.json \
-  --dev-validator 0 \
-  --pvm-backend compiler \
-  --rpc-port 19800
-```
-
-Repeat for `--dev-validator 1..5`.
-
-## Minimal Multi-Machine Example (3 Machines, 6 Validators)
-
-Use this when you want a concrete deployment shape, not just principles.
-
-### A) Topology
-
-- Machine A (`10.0.0.11`): validator `0`, `1`
-- Machine B (`10.0.0.12`): validator `2`, `3`
-- Machine C (`10.0.0.13`): validator `4`, `5`
-
-Optional proxy/builder node:
-- Machine C also runs `--dev-validator 6 --role builder`
-
-### B) Chain config (do this once on deploy controller)
-
-Create a multi-machine chain config (do not use localhost addresses):
-
-```json
-{
-  "genesis_validators": [
-    {"index": 0, "net_addr": "10.0.0.11:40000"},
-    {"index": 1, "net_addr": "10.0.0.11:40001"},
-    {"index": 2, "net_addr": "10.0.0.12:40002"},
-    {"index": 3, "net_addr": "10.0.0.12:40003"},
-    {"index": 4, "net_addr": "10.0.0.13:40004"},
-    {"index": 5, "net_addr": "10.0.0.13:40005"}
-  ]
+```hcl
+job "jamduna" {
+  datacenters = ["dc1"]
+  type = "batch"
 }
 ```
 
-Then generate one shared chainspec:
+* Job name: `jamduna`
+* Runs in datacenter `dc1`
+* Uses `batch` mode for bootstrap-style execution
 
-```bash
-./jamduna gen-spec /etc/jam/chain-config.json /etc/jam/jamduna-spec.json
+Typical flow:
+
+```
+spin up validators → chain starts → job completes
 ```
 
-Distribute exactly the same `jamduna` binary and `jamduna-spec.json` to all machines.
+---
 
-### C) Start commands per machine
+## Parameterization (Optional)
 
-Machine A:
+A parameterized block can allow runtime metadata injection using `nomad job dispatch`.
 
-```bash
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 0 --pvm-backend compiler --rpc-port 19800
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 1 --pvm-backend compiler --rpc-port 19801
+Currently, metadata values are hardcoded.
+
+---
+
+## Task Group
+
+```hcl
+group "jamduna"
 ```
 
-Machine B:
+A group represents co-scheduled allocations. All tasks inside the group are scheduled together.
 
-```bash
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 2 --pvm-backend compiler --rpc-port 19802
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 3 --pvm-backend compiler --rpc-port 19803
+---
+
+## Host Constraints
+
+### Node Label Constraint
+
+```hcl
+constraint {
+  attribute = "${meta.jamduna}"
+  operator  = "="
+  value     = "true"
+}
 ```
 
-Machine C:
+Only Nomad clients labeled with:
 
-```bash
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 4 --pvm-backend compiler --rpc-port 19804
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 5 --pvm-backend compiler --rpc-port 19805
+```
+meta.jamduna = true
 ```
 
-Builder on Machine C: (optional)
+are eligible to run validators.
 
-```bash
-./jamduna run --data-path /var/lib/jamduna --chain /etc/jam/jamduna-spec.json --dev-validator 6 --role builder --pvm-backend compiler --rpc-port 19806
+### Anti-Affinity
+
+```hcl
+constraint {
+  distinct_hosts = true
+}
 ```
 
-### D) Rollout order
+Ensures one validator per physical machine.
 
-1. Start all validator processes (`0..5`) in a tight rollout window.
-2. Verify each node shows block import activity in logs.
-3. Start optional builder/proxy node (`6`) only after validator network is stable.
+---
 
-## Multi-Machine Flow 
+## Group Metadata
 
-Use this only when validators run on separate machines.
+```hcl
+meta {
+  jam_url = "http://192.168.20.0/chains"
+  jam_id = "jamduna"
+  jam_log = "info"
+  node_update = true
+  node_clean = true
+  node_disk_count = 1
+  chain_name = "jamduna"
+  nomad_group = 1
+}
+```
 
-1. Generate one shared chainspec from one chain config.
-2. Distribute the exact same `jamduna` binary and chainspec to all machines.
-3. Distribute keys so node `i` has access to `seed_i` under its `--data-path/keys/`.
-4. Start validator processes (`0..5`) in a tight rollout window.
-5. Optionally run a proxy/builder node as `--dev-validator 6 --role builder` for external sync/debug integration.
+Nomad exposes these values as environment variables:
 
-This release bundle remains optimized for single-machine testing; multi-machine is an extension for now.
+```
+NOMAD_META_*
+```
+
+Used for distributed configuration injection.
+
+---
+
+## Replica Count
+
+```hcl
+count = 6
+```
+
+Creates six allocations corresponding to six validator nodes.
+
+---
+
+## Task Execution
+
+```hcl
+driver = "raw_exec"
+```
+
+Validators run directly on the host rather than inside containers.
+
+Benefits:
+
+* Native NVMe access
+* Direct networking
+* Maximum performance
+
+---
+
+## Startup Script Template
+
+Nomad renders a template into:
+
+```
+local/start.sh
+```
+
+This script performs all bootstrap logic.
+
+---
+
+## Disk Selection Logic
+
+Validators are distributed across NVMe drives:
+
+```bash
+DISK_INDEX=$(( ($NOMAD_META_nomad_group - 1) % $NOMAD_META_node_disk_count + 1))
+```
+
+Resulting storage path:
+
+```
+/mnt/nvme_drive_X
+```
+
+Prevents disk contention.
+
+---
+
+## Binary Auto-Update
+
+```bash
+curl -o local/jamduna ${jam_url}/${chain}/jamduna
+```
+
+Each node downloads the validator binary at startup, enabling simple rolling upgrades.
+
+---
+
+## Chain Spec Distribution
+
+```bash
+curl -o spec.json ...
+```
+
+All validators receive the same chain specification.
+
+---
+
+## Node Identity from Host IP
+
+Validator identity is derived from the host IP address:
+
+```bash
+INDEX=$(ip ... | awk -F. '{print $4}')
+```
+
+Example mapping:
+
+| Host IP       | Validator |
+| ------------- | --------- |
+| 192.168.20.11 | 11        |
+| 192.168.20.12 | 12        |
+
+No central coordinator is required.
+
+---
+
+## Validator Seed Fetch
+
+Each node downloads its validator key:
+
+```bash
+SEED_URL=.../keys/seed_${INDEX}
+```
+
+This creates deterministic validator assignment and reproducible cluster setup.
+
+---
+
+## Node Launch
+
+```bash
+exec ./local/jamduna \
+  --chain=spec.json \
+  run \
+  --dev-validator "$INDEX"
+```
+
+Nomad supervises the validator process lifecycle.
+
+---
+
+## Runtime Environment
+
+```hcl
+env {
+  RUST_BACKTRACE = "full"
+  POLKAVM_BACKEND = "compiler"
+}
+```
+
+Enables detailed debugging and selects runtime backend behavior.
+
+---
+
+## Resource Limits
+
+```hcl
+resources {
+  memory = 16000
+}
+```
+
+Each validator reserves 16 GB RAM.
+
+---
+
+## Log Management
+
+Nomad rotates logs automatically:
+
+```hcl
+logs {
+  max_files     = 5
+  max_file_size = 10
+}
+```
+
+
+## Notes
+
+* If host IP addresses change, validator identity may break.
+* Keys are currently downloaded over HTTP. 
+* Validators are typically long-lived services. Consider using `type = "service"` for production networks.
+
