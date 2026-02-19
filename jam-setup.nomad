@@ -16,7 +16,7 @@ job "jam-setup" {
         command = "bash"
         args = [
           "-c",
-          "cd /opt/jamtestnet/release && make clean-state && make gen-keys && make gen-spec"
+          "cd /root/go/src/github.com/colorfulnotion/jamt/release && make clean-state && make gen-keys && make gen-spec"
         ]
       }
 

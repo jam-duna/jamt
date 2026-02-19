@@ -21,13 +21,13 @@ job "jam-validators" {
       driver = "raw_exec"
 
       config {
-        command = "/opt/jamtestnet/release/jamduna"
+        command = "/root/go/src/github.com/colorfulnotion/jamt/release/jamduna"
 
         args = [
           "run",
           "--dev-validator", "${NOMAD_ALLOC_INDEX}",
-          "--chain", "/opt/jamtestnet/release/chainspecs/jamduna-spec.json",
-          "--data-path", "/opt/jamtestnet/release/state/validator_${NOMAD_ALLOC_INDEX}",
+          "--chain", "/root/go/src/github.com/colorfulnotion/jamt/release/chainspecs/jamduna-spec.json",
+          "--data-path", "/root/go/src/github.com/colorfulnotion/jamt/release/state/validator_${NOMAD_ALLOC_INDEX}",
           "--port", "${NOMAD_PORT_p2p}",
           "--rpc-port", "${NOMAD_PORT_rpc}",
           "--role", "validator"

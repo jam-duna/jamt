@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "lastEnd": 6337,
+  "submittedRanges": 1404,
+  "submittedCalls": 53,
+  "updatedAt": "2026-02-19T13:28:11.754693921Z",
+  "endpoint": "http://localhost:8601",
+  "randomSeed": 1771507639458148736,
+  "generatorStarted": 1
+}

@@ -20,10 +20,10 @@ job "jam-fib" {
       }
 
       config {
-        command = "/opt/jamtestnet/release/fib-stream-runner"
+        command = "/root/go/src/github.com/colorfulnotion/jamt/release/fib-stream-runner"
 
         args = [
-          "-chain", "/opt/jamtestnet/release/chainspecs/jamduna-spec.json"
+          "-chain", "/root/go/src/github.com/colorfulnotion/jamt/release/chainspecs/jamduna-spec.json"
         ]
       }
 
