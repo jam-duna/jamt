@@ -19,7 +19,7 @@ job "jamduna" {
      }
 
     meta {
-      jam_url = "http://192.168.20.0/chains"
+      jam_url = "http://10.128.0.2/root/go/src/github.com/colorfulnotion/jamt/"
       jam_id = "jamduna"
       jam_log = "info"
       node_update = true
@@ -69,14 +69,27 @@ if [ -f local/jamduna ]; then
 fi
 
 # Extract last octet from machine's IP
-INDEX=$(ip -4 addr show | awk '/inet 192\.168\.20/ {print $2}' | cut -d/ -f1 | awk -F. '{print $4}')
-export IP=$(ip -4 addr show | awk '/inet 192\.168\.20/ {print $2}' | cut -d/ -f1)
+#INDEX=$(ip -4 addr show | awk '/inet 192\.168\.20/ {print $2}' | cut -d/ -f1 | awk -F. '{print $4}')
+#export IP=$(ip -4 addr show | awk '/inet 192\.168\.20/ {print $2}' | cut -d/ -f1)
+#
+#if [ -z "$IP" ]; then
+#  echo "Error: Could not determine IP address" >&2
+#  exit 1
+#fi
+# Get short hostname (without domain)
+HOST=$(hostname -s)
 
-if [ -z "$IP" ]; then
-  echo "Error: Could not determine IP address" >&2
+# Extract numeric suffix (everything after last dash)
+INDEX=$(echo "$HOST" | awk -F- '{print $NF}')
+
+if ! [[ "$INDEX" =~ ^[0-9]+$ ]]; then
+  echo "Error: Could not extract numeric index from hostname $HOST" >&2
   exit 1
 fi
 
+export INDEX
+echo "Detected HOST: $HOST"
+echo "Computed INDEX from hostname: $INDEX"
 
 echo "Computed PEER_HOST: $PEER_HOST"
 echo "Computed PORT: $PORT"
@@ -118,7 +131,7 @@ EOH
         POLKAVM_BACKEND = "compiler"
       }
        resources {
-         memory = 16000
+         memory = 6000
         }
 
   logs {
