@@ -19,7 +19,7 @@ job "jamduna" {
      }
 
     meta {
-      jam_url = "http://10.128.0.2/root/go/src/github.com/colorfulnotion/jamt/"
+      jam_url = "http://coretime.jamduna.org"
       jam_id = "jamduna"
       jam_log = "info"
       node_update = true
@@ -131,7 +131,7 @@ EOH
         POLKAVM_BACKEND = "compiler"
       }
        resources {
-         memory = 6000
+         memory = 5000
         }
 
   logs {

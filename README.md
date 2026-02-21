@@ -1,297 +1,96 @@
-# JAM DUNA Nomad Deployment
 
-This document explains the `jamduna` Nomad job configuration used to deploy and bootstrap a JAM validator cluster in duna.hcl
+# JAM DUNA - Nomad Setup
 
+To run tiny JAM testnets, we have a nomad cluster of 7 instances in GCP:
+ * `jam-0`.. `jam-5` - 6 JAM validators forming a "tiny" testnet, setup with `duna.hcl` (see "Setup Validators")
+ * `coretime` - 1 JAM builder submitting JAM work packages, setup with `fib.hcl` (see "Setup Builders")
 
-## Overview
-
-This Nomad job deploys multiple JAM validator nodes across a cluster in a deterministic, disk-aware way.
-
-The job:
-
-* Schedules **6 JAM validator processes**
-* Ensures each runs on a separate physical host
-* Auto-downloads binaries and chain specifications
-* Binds node identity to host IP and disk
-* Deterministically assigns validator keys
+Nomad runs on `coretime`:
 
 ```
-Nomad
-  ↓
-Deterministic Validator Scheduler
-  ↓
-IP → Identity Mapping
-  ↓
-Auto Key Distribution
-  ↓
-JAM Network Bootstrap
+http://coretime.jamduna.org:4646/ui/jobs
+http://coretime.jamduna.org:4646/ui/clients
+http://coretime.jamduna.org:4646/ui/servers
+http://coretime.jamduna.org:4646/ui/jobs/jamduna@default
 ```
 
-Nomad acts as the chain bootstrap and validator orchestrator.
+## Setup Validators
 
-Features:
-
-* Stateless deployment
-* Host anti-affinity
-* Binary auto-upgrade
-* Zero-touch chain bring-up
-
-## Job Definition
-
-```hcl
-job "jamduna" {
-  datacenters = ["dc1"]
-  type = "batch"
-}
-```
-
-* Job name: `jamduna`
-* Runs in datacenter `dc1`
-* Uses `batch` mode for bootstrap-style execution
-
-Typical flow:
+The [duna.hcl](duna.hcl) Nomad job file is used to start up validators:
 
 ```
-spin up validators → chain starts → job completes
+# nomad run duna.hcl
+==> View this job in the Web UI: http://127.0.0.1:4646/ui/jobs/jamduna@default
+
+==> 2026-02-20T15:52:56Z: Monitoring evaluation "4a9c09be"
+    2026-02-20T15:52:56Z: Evaluation triggered by job "jamduna"
+    2026-02-20T15:52:57Z: Allocation "9f5bd9f5" created: node "a067b925", group "jamduna"
+    2026-02-20T15:52:57Z: Allocation "df532c4a" created: node "90706a00", group "jamduna"
+    2026-02-20T15:52:57Z: Allocation "46b26209" created: node "6c6f34a5", group "jamduna"
+    2026-02-20T15:52:57Z: Allocation "6181e736" created: node "c176cefe", group "jamduna"
+    2026-02-20T15:52:57Z: Allocation "62644fed" created: node "1792fcc8", group "jamduna"
+    2026-02-20T15:52:57Z: Allocation "7a2e96c1" created: node "63cff9ac", group "jamduna"
+    2026-02-20T15:52:57Z: Evaluation status changed: "pending" -> "complete"
+==> 2026-02-20T15:52:57Z: Evaluation "4a9c09be" finished with status "complete"
+root@coretime:~/go/src/github.com/colorfulnotion/jamt# nomad node status
+ID        Node Pool  DC   Name                                       Class   Drain  Eligibility  Status
+63cff9ac  default    dc1  jam-1.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+1792fcc8  default    dc1  jam-5.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+90706a00  default    dc1  jam-4.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+c176cefe  default    dc1  jam-3.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+a067b925  default    dc1  jam-2.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+a4489629  default    dc1  jam-1.us-central1-b.c.jamduna.internal     <none>  false  ineligible   down
+2d05e850  default    dc1  jam-1.us-central1-b.c.jamduna.internal     <none>  false  ineligible   down
+6c6f34a5  default    dc1  jam-0.us-central1-b.c.jamduna.internal     <none>  false  eligible     ready
+ed111410  default    dc1  coretime.us-central1-c.c.jamduna.internal  <none>  false  eligible     ready
 ```
 
----
-
-## Parameterization (Optional)
-
-A parameterized block can allow runtime metadata injection using `nomad job dispatch`.
-
-Currently, metadata values are hardcoded.
-
----
-
-## Task Group
-
-```hcl
-group "jamduna"
-```
-
-A group represents co-scheduled allocations. All tasks inside the group are scheduled together.
-
----
-
-## Host Constraints
-
-### Node Label Constraint
-
-```hcl
-constraint {
-  attribute = "${meta.jamduna}"
-  operator  = "="
-  value     = "true"
-}
-```
-
-Only Nomad clients labeled with:
+To stop the validators:
 
 ```
-meta.jamduna = true
+# nomad job stop -purge jamduna
+==> 2026-02-20T15:52:00Z: Monitoring evaluation "e75bc39f"
+    2026-02-20T15:52:00Z: Evaluation triggered by job "jamduna"
+    2026-02-20T15:52:01Z: Evaluation status changed: "pending" -> "complete"
+==> 2026-02-20T15:52:01Z: Evaluation "e75bc39f" finished with status "complete"
 ```
 
-are eligible to run validators.
+## Running Builders
 
-### Anti-Affinity
+### Fib
 
-```hcl
-constraint {
-  distinct_hosts = true
-}
+To run the fib service so that there is 1 builder runing on `coretime`, run the `fib.hcl` Nomad following the guide below.
+
+
+To Run fib builder
+```
+nomad run fib.hcl 
 ```
 
-Ensures one validator per physical machine.
+A set of binaries:
+* fib-builder - runs a JAM Validator and connects to the JAM tiny testnet
+* fib-feeder + fib-stream-runner  - submits "transactions" to the builder
 
----
 
-## Group Metadata
-
-```hcl
-meta {
-  jam_url = "http://192.168.20.0/chains"
-  jam_id = "jamduna"
-  jam_log = "info"
-  node_update = true
-  node_clean = true
-  node_disk_count = 1
-  chain_name = "jamduna"
-  nomad_group = 1
-}
+To Stop fib builder:
+```
+nomad stop -purge jam-fib
 ```
 
-Nomad exposes these values as environment variables:
+You can then see it in the UI here:
 
 ```
-NOMAD_META_*
+http://coretime.jamduna.org:4646/ui/jobs/jam-fib@default
 ```
 
-Used for distributed configuration injection.
-
----
-
-## Replica Count
-
-```hcl
-count = 6
-```
-
-Creates six allocations corresponding to six validator nodes.
-
----
-
-## Task Execution
-
-```hcl
-driver = "raw_exec"
-```
-
-Validators run directly on the host rather than inside containers.
-
-Benefits:
-
-* Native NVMe access
-* Direct networking
-* Maximum performance
-
----
-
-## Startup Script Template
-
-Nomad renders a template into:
+and see logs here:
 
 ```
-local/start.sh
-```
-
-This script performs all bootstrap logic.
-
----
-
-## Disk Selection Logic
-
-Validators are distributed across NVMe drives:
-
-```bash
-DISK_INDEX=$(( ($NOMAD_META_nomad_group - 1) % $NOMAD_META_node_disk_count + 1))
-```
-
-Resulting storage path:
-
-```
-/mnt/nvme_drive_X
-```
-
-Prevents disk contention.
-
----
-
-## Binary Auto-Update
-
-```bash
-curl -o local/jamduna ${jam_url}/${chain}/jamduna
-```
-
-Each node downloads the validator binary at startup, enabling simple rolling upgrades.
-
----
-
-## Chain Spec Distribution
-
-```bash
-curl -o spec.json ...
-```
-
-All validators receive the same chain specification.
-
----
-
-## Node Identity from Host IP
-
-Validator identity is derived from the host IP address:
-
-```bash
-INDEX=$(ip ... | awk -F. '{print $4}')
-```
-
-Example mapping:
-
-| Host IP       | Validator |
-| ------------- | --------- |
-| 192.168.20.11 | 11        |
-| 192.168.20.12 | 12        |
-
-No central coordinator is required.
-
----
-
-## Validator Seed Fetch
-
-Each node downloads its validator key:
-
-```bash
-SEED_URL=.../keys/seed_${INDEX}
-```
-
-This creates deterministic validator assignment and reproducible cluster setup.
-
----
-
-## Node Launch
-
-```bash
-exec ./local/jamduna \
-  --chain=spec.json \
-  run \
-  --dev-validator "$INDEX"
-```
-
-Nomad supervises the validator process lifecycle.
-
----
-
-## Runtime Environment
-
-```hcl
-env {
-  RUST_BACKTRACE = "full"
-  POLKAVM_BACKEND = "compiler"
-}
-```
-
-Enables detailed debugging and selects runtime backend behavior.
-
----
-
-## Resource Limits
-
-```hcl
-resources {
-  memory = 16000
-}
-```
-
-Each validator reserves 16 GB RAM.
-
----
-
-## Log Management
-
-Nomad rotates logs automatically:
-
-```hcl
-logs {
-  max_files     = 5
-  max_file_size = 10
-}
+http://coretime.jamduna.org:4646/ui/allocations/e533614a-54ca-64d7-fbfa-45c81a9e262f/fib-stream/logs
 ```
 
 
-## Notes
 
-* If host IP addresses change, validator identity may break.
-* Keys are currently downloaded over HTTP. 
-* Validators are typically long-lived services. Consider using `type = "service"` for production networks.
+
+
 
