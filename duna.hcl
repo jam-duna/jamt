@@ -80,7 +80,7 @@ fi
 HOST=$(hostname -s)
 
 # Extract numeric suffix (everything after last dash)
-INDEX=$(echo "$HOST" | awk -F- '{print $NF}')
+INDEX=$(echo "$HOST" | awk -F- '{print $NF + 0}')
 
 if ! [[ "$INDEX" =~ ^[0-9]+$ ]]; then
   echo "Error: Could not extract numeric index from hostname $HOST" >&2
