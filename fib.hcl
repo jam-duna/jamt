@@ -27,6 +27,10 @@ job "jam-fib" {
           <<EOF
 set -e
 export HOME=/root
+
+# Must point to the directory where the JAM release has been extracted.
+export JAM_PATH=/root/go/src/github.com/colorfulnotion/jamt_release/tools/jamduna/extracted/jamduna-release-linux-amd64
+
 echo "Running only on coretime"
 
 BASE_DIR="$${NOMAD_TASK_DIR}"
