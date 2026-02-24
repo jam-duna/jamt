@@ -33,6 +33,9 @@ BASE_DIR="$${NOMAD_TASK_DIR}"
 mkdir -p "$BASE_DIR/local"
 mkdir -p /root/.jamduna/keys
 
+echo "Cleaning previous fib builder DB: /root/.jamduna/jam-6/leveldb"
+rm -rf /root/.jamduna/jam-6/leveldb
+
 curl -fsSL -o "$BASE_DIR/local/fib-stream-runner" http://coretime.jamduna.org/jamduna/fib-stream-runner
 chmod +x "$BASE_DIR/local/fib-stream-runner"
 
