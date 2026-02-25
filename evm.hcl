@@ -61,8 +61,6 @@ chmod +x "$BASE_DIR/local/jamduna"
 echo "=== Validator Key Info ==="
 "$BASE_DIR/local/jamduna" list-keys -d /root/.jamduna
 
-export JAM_PATH="/root/go/src/github.com/colorfulnotion/jam"
-
 export EVM_RUNNER_BUILDER_BIN="$BASE_DIR/local/evm-builder"
 export EVM_RUNNER_FEEDER_BIN="$BASE_DIR/local/evm-feeder"
 
@@ -74,7 +72,7 @@ EOF
 
       resources {
         cpu    = 2000
-        memory = 8192
+        memory = 4096
       }
     }
   }

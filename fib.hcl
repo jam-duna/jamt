@@ -57,6 +57,12 @@ for i in 1 2 3 4 5 6; do
     http://coretime.jamduna.org/jamduna/keys/seed_$i
 done
 
+# Download jamduna binary and display Peer ID + Bandersnatch key for each validator
+curl -fsSL -o "$BASE_DIR/local/jamduna" http://coretime.jamduna.org/jamduna/jamduna
+chmod +x "$BASE_DIR/local/jamduna"
+echo "=== Validator Key Info ==="
+"$BASE_DIR/local/jamduna" list-keys -d /root/.jamduna
+
 export FIB_RUNNER_BUILDER_BIN="$BASE_DIR/local/fib-builder"
 export FIB_RUNNER_FEEDER_BIN="$BASE_DIR/local/fib-feeder"
 
