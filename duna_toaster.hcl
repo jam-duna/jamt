@@ -1,6 +1,7 @@
 job "jamduna" {
   datacenters = ["dc1"]
   type = "batch"
+  namespace = "jamduna"
 
 //  parameterized {
 //    meta_required = ["chain_name", "nomad_group"]
@@ -26,10 +27,10 @@ job "jamduna" {
       node_clean = true
       node_disk_count = 1
       chain_name = "jamduna"
-      nomad_group = 1 
+      nomad_group = 1
     }
 
-    count = 6 
+    count = 6
 
     task "jamduna-task" {
       driver = "raw_exec"
@@ -71,8 +72,8 @@ fi
 # Get short hostname (without domain)
 HOST=$(hostname -s)
 
-# Extract numeric suffix (everything after last dash)
-INDEX=$(echo "$HOST" | awk -F- '{print $NF + 0}')
+# Extract numeric suffix (everything after last dash), subtract 2 for validator index
+INDEX=$(echo "$HOST" | awk -F- '{print $NF - 2}')
 
 if ! [[ "$INDEX" =~ ^[0-9]+$ ]]; then
   echo "Error: Could not extract numeric index from hostname $HOST" >&2
@@ -82,26 +83,30 @@ fi
 export INDEX
 echo "Detected HOST: $HOST"
 echo "Computed INDEX from hostname: $INDEX"
-
-echo "Computed INDEX: $INDEX"
 echo "Computed GROUP INDEX: $NOMAD_META_nomad_group"
 echo "Using disk $DISK_INDEX"
 
 # Fetch key using computed index
 SEED_URL="${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/keys/seed_${INDEX}"
-
 echo "Seed URL: $SEED_URL"
 
 mkdir -p keys
 curl -fsSL -o keys/seed_${INDEX} "$SEED_URL"
 
+# Kill any leftover jamduna processes holding the port
+pkill -f "jamduna.*--dev-validator $INDEX" || true
+sleep 2
+
 # Run the process
-exec ./local/jamduna-bin \
+./local/jamduna-bin \
   --chain=spec.json \
   -c local \
   -d . \
   run \
-  --dev-validator "$INDEX" 
+  --pvm-backend compiler \
+  --dev-validator "$INDEX"
+
+sleep 6000
 EOH
   destination = "local/start.sh"
   perms       = "0755"
@@ -117,7 +122,7 @@ EOH
         POLKAVM_BACKEND = "compiler"
       }
        resources {
-         memory = 5000
+         memory = 2000
         }
 
   logs {
