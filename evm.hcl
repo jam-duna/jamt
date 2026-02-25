@@ -30,7 +30,6 @@ export HOME=/root
 echo "Running EVM stream runner on coretime"
 
 # Must point to the directory where the JAM release has been extracted.
-export JAM_PATH=/root/go/src/github.com/colorfulnotion/jamt_release/tools/jamduna/extracted/jamduna-release-linux-amd64
 
 echo "Cleaning previous fib builder DB: /root/.jamduna/jam-6/leveldb"
 rm -rf /root/.jamduna/jam-6/leveldb
