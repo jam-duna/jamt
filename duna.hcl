@@ -51,8 +51,8 @@ DISK_PATH="/mnt/nvme_drive_${DISK_INDEX}"
 
 
 if [ "$${NOMAD_META_node_update:-false}" = "true" ]; then
-  curl -fsSL -o local/jamduna "${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/jamduna"
-  chmod +x local/jamduna
+  curl -fsSL -o local/jamduna-bin "${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/jamduna"
+  chmod +x local/jamduna-bin
 fi
 
 if [ "$${NOMAD_META_node_clean:-false}" = "true" ]; then
@@ -60,12 +60,11 @@ if [ "$${NOMAD_META_node_clean:-false}" = "true" ]; then
   #rm -rf "${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
 fi
 
-mkdir -p local/${NOMAD_META_chain_name}/keys
 curl -fsSL -o spec.json "${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/spec.json"
 
 # Ensure jamduna is executable
-if [ -f local/jamduna ]; then
-  chmod +x local/jamduna
+if [ -f local/jamduna-bin ]; then
+  chmod +x local/jamduna-bin
 fi
 
 # Extract last octet from machine's IP
@@ -91,31 +90,26 @@ export INDEX
 echo "Detected HOST: $HOST"
 echo "Computed INDEX from hostname: $INDEX"
 
-echo "Computed PEER_HOST: $PEER_HOST"
-echo "Computed PORT: $PORT"
 echo "Computed INDEX: $INDEX"
 echo "Computed GROUP INDEX: $NOMAD_META_nomad_group"
 echo "Using disk $DISK_INDEX"
 
-VALIDATOR_SEED=$(grep "$IP:" local/validator-list | awk NR==$NOMAD_META_nomad_group | cut -d, -f1)
-echo "Computed VALIDATOR_SEED: $VALIDATOR_SEED"
-
 # Fetch key using computed index
 SEED_URL="${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/keys/seed_${INDEX}"
-
 echo "Seed URL: $SEED_URL"
-echo "Peer ID: $PEER_ID"
 
 mkdir -p keys
 curl -fsSL -o keys/seed_${INDEX} "$SEED_URL"
 
+export JAM_PATH="/root/go/src/github.com/colorfulnotion/jam"
+
 # Run the process
-exec ./local/jamduna \
+exec ./local/jamduna-bin \
   --chain=spec.json \
   -c local \
   -d . \
   run \
-  --dev-validator "$INDEX" 
+  --dev-validator "$INDEX"
 EOH
   destination = "local/start.sh"
   perms       = "0755"
