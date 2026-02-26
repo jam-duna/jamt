@@ -44,16 +44,22 @@ curl -fsSL -o "$BASE_DIR/spec.json" "${NOMAD_META_jam_url}/${NOMAD_META_chain_na
 curl -fsSL -o "$BASE_DIR/jamduna-bin" "${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/jamduna"
 chmod +x "$BASE_DIR/jamduna-bin"
 
+# Use NVMe storage for data files via state/ directory override
+DATA_DIR="/mnt/nvme_drive_1/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_ID}"
+mkdir -p "$DATA_DIR/keys"
+
+# Create state/ symlink next to binaries so fib-stream-runner uses NVMe path
+ln -sfn "$DATA_DIR" "$BASE_DIR/state"
+
 # Download all seeds (0-5 validators + 6 for fib builder)
-mkdir -p /root/.jamduna/keys
 for i in 0 1 2 3 4 5 6; do
-  curl -fsSL -o /root/.jamduna/keys/seed_$i \
+  curl -fsSL -o "$DATA_DIR/keys/seed_$i" \
     "${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/keys/seed_$i"
 done
 
 # Display key info
 echo "=== Validator Key Info ==="
-"$BASE_DIR/jamduna-bin" list-keys -d /root/.jamduna
+"$BASE_DIR/jamduna-bin" list-keys -d "$DATA_DIR"
 
 export FIB_RUNNER_BUILDER_BIN="$BASE_DIR/fib-builder"
 export FIB_RUNNER_FEEDER_BIN="$BASE_DIR/fib-feeder"
@@ -73,7 +79,6 @@ EOH
 
       config {
         command = "local/start.sh"
-        oom_score_adj = 0
       }
 
       env {
