@@ -86,12 +86,20 @@ echo "Computed INDEX from hostname: $INDEX"
 echo "Computed GROUP INDEX: $NOMAD_META_nomad_group"
 echo "Using disk $DISK_INDEX"
 
+# Use NVMe storage for data files
+DATA_DIR="${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
+mkdir -p "$DATA_DIR/keys"
+echo "Data directory: $DATA_DIR"
+
 # Fetch key using computed index
 SEED_URL="${NOMAD_META_jam_url}/${NOMAD_META_chain_name}/keys/seed_${INDEX}"
 echo "Seed URL: $SEED_URL"
 
-mkdir -p keys
-curl -fsSL -o keys/seed_${INDEX} "$SEED_URL"
+curl -fsSL -o "$DATA_DIR/keys/seed_${INDEX}" "$SEED_URL"
+
+# Display key info
+echo "=== Validator Key Info ==="
+./local/jamduna-bin list-keys -d "$DATA_DIR"
 
 # Kill any leftover jamduna processes holding the port
 pkill -f "jamduna.*--dev-validator $INDEX" || true
@@ -101,7 +109,7 @@ sleep 2
 ./local/jamduna-bin \
   --chain=spec.json \
   -c local \
-  -d . \
+  -d "$DATA_DIR" \
   run \
   --pvm-backend compiler \
   --dev-validator "$INDEX"
@@ -114,7 +122,6 @@ EOH
 
       config {
         command = "local/start.sh"
-        oom_score_adj = 0
       }
 
       env {
