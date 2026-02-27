@@ -45,7 +45,7 @@ curl -fsSL -o "$BASE_DIR/jamduna-bin" "${NOMAD_META_jam_url}/${NOMAD_META_chain_
 chmod +x "$BASE_DIR/jamduna-bin"
 
 # Use NVMe storage for data files via state/ directory override
-DATA_DIR="/mnt/nvme_drive_1/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
+DATA_DIR="/mnt/nvme_drive_1/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_ID}"
 mkdir -p "$DATA_DIR/keys"
 
 # Create state/ symlink next to binaries so fib-stream-runner uses NVMe path
