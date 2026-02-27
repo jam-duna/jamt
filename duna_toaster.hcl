@@ -57,8 +57,8 @@ if [ "$${NOMAD_META_node_update:-false}" = "true" ]; then
 fi
 
 if [ "$${NOMAD_META_node_clean:-false}" = "true" ]; then
-  echo "NOT Cleaning location ${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
-  #rm -rf "${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
+  echo "NOT Cleaning location ${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_ID}"
+  #rm -rf "${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_ID}"
 fi
 
 mkdir -p local/${NOMAD_META_chain_name}/keys
@@ -87,7 +87,7 @@ echo "Computed GROUP INDEX: $NOMAD_META_nomad_group"
 echo "Using disk $DISK_INDEX"
 
 # Use NVMe storage for data files
-DATA_DIR="${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_NAME}"
+DATA_DIR="${DISK_PATH}/${NOMAD_JOB_NAME}/${NOMAD_ALLOC_ID}"
 mkdir -p "$DATA_DIR/keys"
 echo "Data directory: $DATA_DIR"
 
