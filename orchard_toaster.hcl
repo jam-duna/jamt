@@ -1,9 +1,9 @@
-job "jamduna-monero" {
+job "jamduna-orchard" {
   datacenters = ["dc1"]
   type        = "batch"
   namespace   = "jamduna"
 
-  group "monero" {
+  group "orchard" {
     count = 1
 
     constraint {
@@ -17,7 +17,7 @@ job "jamduna-monero" {
       chain_name = "jamduna"
     }
 
-    task "monero-stream" {
+    task "orchard-stream" {
       driver = "raw_exec"
 
       template {
@@ -63,8 +63,8 @@ sleep 2
 rm -rf "$DATA_DIR/jam-6" "$DATA_DIR/rollup-stream-runner"
 
 exec "$BASE_DIR/rollup-stream-runner" \
-  --service monero \
-  --mode testmonero \
+  --service orchard \
+  --mode testorchard \
   --chain "$BASE_DIR/spec.json" \
   --data-path "$DATA_DIR" \
   --dev-validator 6 \
