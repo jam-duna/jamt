@@ -37,9 +37,9 @@ Nomad UI: `https://nomad.jamtoaster.network/ui/jobs/jamduna-fib@jamduna`
 
 ---
 
-### evm_toaster.hcl - EVM Builder
+### evm_toaster.hcl - EVM Runnercore
 
-Runs 1 EVM stream task on `coretime`. Downloads `evm-stream-runner`, `evm-builder`, and `evm-feeder` binaries and submits EVM-based work packages to the JAM testnet. Fetches seeds 0-6 and runs with validator index 6 implied via the evm-stream-runner.
+Runs 1 EVM runnercore task on `coretime`. Downloads `evm-runnercore` and runs in testevm mode on validator index 6 (with epoch-mode enabled), including embedded builder + submission loop in a single process. Fetches seeds 0-6 and writes state to NVMe-backed data path.
 
 ```
 nomad run evm_toaster.hcl
